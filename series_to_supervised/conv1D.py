@@ -5,6 +5,7 @@ from keras.layers import Dense
 from keras.layers import Flatten
 from keras.layers.convolutional import Conv1D
 from keras.layers.convolutional import MaxPooling1D
+from keras.layers.convolutional import AveragePooling1D
 
 # split a univariate sequence into samples
 
@@ -25,7 +26,7 @@ def split_sequence(sequence, n_steps):
 
 
 # define input sequence
-raw_seq = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110]
+raw_seq = [i*10 for i in range(100)]
 # choose a number of time steps
 n_steps = 3
 # split into samples
@@ -37,7 +38,7 @@ X = X.reshape((X.shape[0], X.shape[1], n_features))
 model = Sequential()
 model.add(Conv1D(filters=64, kernel_size=2, activation='relu',
           input_shape=(n_steps, n_features)))
-model.add(MaxPooling1D(pool_size=2))
+model.add(AveragePooling1D(pool_size=2))
 model.add(Flatten())
 model.add(Dense(60, activation='relu'))
 model.add(Dense(1))
@@ -45,7 +46,7 @@ model.compile(optimizer='adam', loss='mse')
 # fit model
 model.fit(X, y, epochs=1000, verbose=0)
 # demonstrate prediction
-x_input = array([110, 120, 130, 140, 150, 160])
-x_input = x_input.reshape((2, n_steps, n_features))
+x_input = array([499, 508, 523])
+x_input = x_input.reshape((1, n_steps, n_features))
 yhat = model.predict(x_input, verbose=0)
 print(yhat)
