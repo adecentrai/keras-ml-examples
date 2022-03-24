@@ -1,4 +1,5 @@
-# univariate cnn example
+# cnn example for timeseries
+import imp
 from matplotlib import pyplot as plt
 import numpy as np
 from numpy import array, hstack
@@ -8,7 +9,7 @@ from keras.layers import Flatten
 from keras.layers.convolutional import Conv1D
 from keras.layers.convolutional import MaxPooling1D
 from keras.layers.convolutional import AveragePooling1D
-
+from keras.models import load_model
 # split a univariate sequence into samples
 
 
@@ -72,7 +73,7 @@ def split_sequences(sequences, n_steps):
     return array(X), array(y)
 
 
-def multivariate():
+def prepare_multivariate():
     # define input sequence
     in_seq1 = np.array([
         *[x for x in range(1000)], *[x for x in range(1000)], *[x for x in range(1000)]])
@@ -82,8 +83,7 @@ def multivariate():
                         ])
     out_seq = np.array(array([in_seq1[i]+in_seq2[i]
                        for i in range(len(in_seq1))]))
-    # convert to [rows, columns] structure
-    # print(in_seq1)
+
     in_seq1 = in_seq1.reshape((len(in_seq1), 1))
     in_seq2 = in_seq2.reshape((len(in_seq2), 1))
     out_seq = out_seq.reshape((len(out_seq), 1))
@@ -93,8 +93,6 @@ def multivariate():
     n_steps = 3
     # convert into input/output
     X, y = split_sequences(dataset, n_steps)
-    print(X)
-    print(y)
     train_entries = 2900
     train_X, train_y = X[:train_entries, :], y[:train_entries]
     test_X, test_y = X[train_entries:, :], y[train_entries:]
@@ -102,6 +100,20 @@ def multivariate():
     # the dataset knows the number of features, e.g. 2
     n_features = X.shape[2]
     # define model
+    return n_steps, n_features, train_X, train_y, test_X, test_y
+
+    # demonstrate prediction
+    # yhat = model.predict(test_X, verbose=0)
+    # print(yhat)
+    # print(test_y)
+    # plt.plot(yhat, label='yhat')
+    # plt.plot(test_y, label='Y')
+    # plt.legend()
+    # plt.show()
+    return model, test_X, test_y
+
+
+def model_multivariate(n_steps, n_features, train_X, train_y, test_X, test_y):
     model = Sequential()
     model.add(Conv1D(filters=64, kernel_size=2, activation='relu',
               input_shape=(n_steps, n_features)))
@@ -112,19 +124,28 @@ def multivariate():
     model.compile(optimizer='adam', loss='mse')
     # fit model
     history = model.fit(train_X, train_y, epochs=100,
-                        validation_data=(test_X, test_y), verbose=2)
+                        validation_data=(test_X, test_y), verbose=1)
     plt.plot(history.history['loss'], label='loss')
     plt.plot(history.history['val_loss'], label='val_loss')
     plt.legend()
     plt.show()
+    return model
 
-    # demonstrate prediction
-    yhat = model.predict(test_X, verbose=0)
-    print(yhat)
-    print(test_y)
-    plt.plot(yhat, label='yhat')
-    plt.plot(test_y, label='Y')
-    plt.legend()
-    plt.show()
 
-multivariate()
+n_steps, n_features, train_X, train_y, test_X, test_y = prepare_multivariate()
+model = model_multivariate(
+    n_steps, n_features, train_X, train_y, test_X, test_y)
+
+print("Saving model")
+model.save("cov1D_multivariate")
+
+print("Reconstructing model")
+reconstructed_model = load_model("cov1D_multivariate")
+
+yhat = reconstructed_model.predict(test_X, verbose=0)
+# print(yhat)
+# print(test_y)
+plt.plot(yhat, label='yhat')
+plt.plot(test_y, label='Y')
+plt.legend()
+plt.show()
