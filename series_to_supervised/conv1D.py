@@ -1,4 +1,6 @@
 # univariate cnn example
+from matplotlib import pyplot as plt
+import numpy as np
 from numpy import array, hstack
 from keras.models import Sequential
 from keras.layers import Dense
@@ -72,10 +74,16 @@ def split_sequences(sequences, n_steps):
 
 def multivariate():
     # define input sequence
-    in_seq1 = array([10, 20, 30, 40, 50, 60, 70, 80, 90])
-    in_seq2 = array([15, 25, 35, 45, 55, 65, 75, 85, 95])
-    out_seq = array([in_seq1[i]+in_seq2[i] for i in range(len(in_seq1))])
+    in_seq1 = np.array([
+        *[x for x in range(1000)], *[x for x in range(1000)], *[x for x in range(1000)]])
+    in_seq2 = np.array([*[x for x in range(50, 1050)],
+                        *[x for x in range(50, 1050)],
+                        *[x for x in range(50, 1050)]
+                        ])
+    out_seq = np.array(array([in_seq1[i]+in_seq2[i]
+                       for i in range(len(in_seq1))]))
     # convert to [rows, columns] structure
+    # print(in_seq1)
     in_seq1 = in_seq1.reshape((len(in_seq1), 1))
     in_seq2 = in_seq2.reshape((len(in_seq2), 1))
     out_seq = out_seq.reshape((len(out_seq), 1))
@@ -85,6 +93,12 @@ def multivariate():
     n_steps = 3
     # convert into input/output
     X, y = split_sequences(dataset, n_steps)
+    print(X)
+    print(y)
+    train_entries = 2900
+    train_X, train_y = X[:train_entries, :], y[:train_entries]
+    test_X, test_y = X[train_entries:, :], y[train_entries:]
+
     # the dataset knows the number of features, e.g. 2
     n_features = X.shape[2]
     # define model
@@ -97,9 +111,20 @@ def multivariate():
     model.add(Dense(1))
     model.compile(optimizer='adam', loss='mse')
     # fit model
-    model.fit(X, y, epochs=1000, verbose=0)
+    history = model.fit(train_X, train_y, epochs=100,
+                        validation_data=(test_X, test_y), verbose=2)
+    plt.plot(history.history['loss'], label='loss')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    plt.legend()
+    plt.show()
+
     # demonstrate prediction
-    x_input = array([[80, 85], [90, 95], [100, 105]])
-    x_input = x_input.reshape((1, n_steps, n_features))
-    yhat = model.predict(x_input, verbose=0)
+    yhat = model.predict(test_X, verbose=0)
     print(yhat)
+    print(test_y)
+    plt.plot(yhat, label='yhat')
+    plt.plot(test_y, label='Y')
+    plt.legend()
+    plt.show()
+
+multivariate()
