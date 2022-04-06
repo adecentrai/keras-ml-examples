@@ -102,15 +102,6 @@ def prepare_multivariate():
     # define model
     return n_steps, n_features, train_X, train_y, test_X, test_y
 
-    # demonstrate prediction
-    # yhat = model.predict(test_X, verbose=0)
-    # print(yhat)
-    # print(test_y)
-    # plt.plot(yhat, label='yhat')
-    # plt.plot(test_y, label='Y')
-    # plt.legend()
-    # plt.show()
-    return model, test_X, test_y
 
 
 def model_multivariate(n_steps, n_features, train_X, train_y, test_X, test_y):
