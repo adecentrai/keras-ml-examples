@@ -12,7 +12,6 @@ from keras.layers.convolutional import AveragePooling1D
 from keras.models import load_model
 from pandas import DataFrame, read_csv, to_datetime
 import datetime
-import pandas as pd
 from pyparsing import col
 
 from sklearn.preprocessing import OneHotEncoder
@@ -77,42 +76,11 @@ def load_data():
     df.reset_index(inplace=True)
     df['year'] = [d.year for d in df.date]
     df['month'] = [d.strftime('%m') for d in df.date]
-    years = df['year'].unique()
+    
     #print(df[['month',"value",'year']])
    
-    df1 = df.groupby(['month','year'])['value'].sum().reset_index()
-    df1 = df1.sort_values(by="month", ascending=True)
-   
-    sub = df1[df1['year'] == 2013]
-    # print(sub.head())
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12,6))
-    colors = ['b','g','r','c','m','y','k']
-    color_index = 0
-    # plotting for one year
-    for year in years:
-        sub = df1[df1['year'] == year]
-        sub["month"] = sub["month"].astype(int)
-        sub.set_index('month',inplace=True)
-        sub1 = DataFrame()
-        sub1['month'] = [i+1 for i in range(12)]
-        
-        sub1['value'] = [(sub['value'][i+1] if i+1 in sub.index else 0)  for i in range(12)]
-         print(sub1)
-        ax.plot(sub1['month'], sub1['value'], color=colors[color_index], linestyle='-', label=year)
-        color_index = color_index + 1
-        if(color_index>6):
-            color_index = 0
 
-    # some formatting
-    ax.set_title('2013')
-    ax.set_ylabel('Discharge (m3/s)')
-    ax.set_xlabel('Month')
-    ax.legend()
-    ax.grid()
-    # plt.plot(df1)
-    # plt.gcf().autofmt_xdate()
-    plt.show()
-    return 
+    return df
     shop_encoded = OneHotEncoder(
     ).fit_transform(sales_20949[["shop_id"]])
     # print(pd.DataFrame(shop_encoded.toarray()))
@@ -149,8 +117,9 @@ def load_data():
 
 def prepare_multivariate():
     # define input sequence
-    in_seq1 = np.array([
-        *[x for x in range(1000)], *[x for x in range(1000)], *[x for x in range(1000)]])
+    in_seq1 = np.array([*[x for x in range(1000)],
+                        *[x for x in range(1000)], 
+                        *[x for x in range(1000)]])
     in_seq2 = np.array([*[x for x in range(50, 1050)],
                         *[x for x in range(50, 1050)],
                         *[x for x in range(50, 1050)]])
@@ -203,7 +172,106 @@ def model_multivariate(n_steps, n_features, train_X, train_y, test_X, test_y):
     plt.show()
     return model
 
+def monthly_sales_distribution(df):
+    
+    years = df['year'].unique()
+    df1 = df.groupby(['month','year'])['value'].sum().reset_index()
+    df1 = df1.sort_values(by="month", ascending=True)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12,6))
+    colors = ['b','g','r','c','m','y','k']
+    color_index = 0
+    # plotting for one year
+    for year in years:
+        sub = df1[df1['year'] == year]
+        sub.loc[:,"month"] = sub.loc[:,"month"].astype(int)
+        sub.set_index('month',inplace=True)
+        sub1 = DataFrame()
+        sub1['month'] = [i+1 for i in range(12)]
+        
+        sub1['value'] = [(sub['value'][i+1] if i+1 in sub.index else 0)  for i in range(12)]
+        ax.plot(sub1['month'], sub1['value'], color=colors[color_index], linestyle='-', label=year)
+        color_index = color_index + 1
+        if(color_index>6):
+            color_index = 0
 
+    # some formatting
+    ax.set_title('2013')
+    ax.set_ylabel('Sales')
+    ax.set_xlabel('Month')
+    ax.legend()
+    ax.grid()
+    # plt.plot(df1)
+    # plt.gcf().autofmt_xdate()
+    plt.show()
+
+    return
+def weekly_sales_distribution(df):
+    df["week"] =  [d.strftime('%W') for d in df.date]
+    years = df['year'].unique()
+    df1 = df.groupby(['week','year'])['value'].sum().reset_index()
+    df1 = df1.sort_values(by="week", ascending=True)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12,6))
+    colors = ['b','g','r','c','m','y','k']
+    color_index = 0
+    # plotting for one year
+    for year in years:
+        sub = df1[df1['year'] == year]
+        sub.loc[:,"week"] = sub["week"].astype(int)
+        sub.set_index('week',inplace=True)
+        sub1 = DataFrame()
+        sub1['week'] = [i+1 for i in range(51)]
+        
+        sub1['value'] = [(sub['value'][i+1] if i+1 in sub.index else 0)  for i in range(51)]
+        ax.plot(sub1['week'], sub1['value'], color=colors[color_index], linestyle='-', label=year)
+        color_index = color_index + 1
+        if(color_index>6):
+            color_index = 0
+
+    # some formatting
+    ax.set_title('Weekly Sales')
+    ax.set_ylabel('Sales')
+    ax.set_xlabel('Week number')
+    ax.legend()
+    ax.grid()
+    # plt.plot(df1)
+    # plt.gcf().autofmt_xdate()
+    plt.show()
+
+    return
+
+def daily_sales_distribution(df):
+    df["day"] =  [d.strftime('%j') for d in df.date]
+    years = df['year'].unique()
+    df1 = df.groupby(['day','year'])['value'].sum().reset_index()
+    df1 = df1.sort_values(by="day", ascending=True)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12,6))
+    colors = ['b','g','r','c','m','y','k']
+    color_index = 0
+    # plotting for one year
+    for year in years:
+        sub = df1[df1['year'] == year]
+        sub.loc[:,"day"] = sub["day"].astype(int)
+        sub.set_index('day',inplace=True)
+        sub1 = DataFrame()
+        sub1['day'] = [i+1 for i in range(365)]
+        
+        sub1['value'] = [(sub['value'][i+1] if i+1 in sub.index else 0)  for i in range(365)]
+        ax.plot(sub1['day'], sub1['value'], color=colors[color_index], linestyle='-', label=year)
+        color_index = color_index + 1
+        if(color_index>6):
+            color_index = 0
+
+    # some formatting
+    ax.set_title('Daily Sales')
+    ax.set_ylabel('Sales')
+    ax.set_xlabel('Day number')
+    ax.legend()
+    ax.grid()
+    # plt.plot(df1)
+    # plt.gcf().autofmt_xdate()
+    plt.show()
+
+    return
 # n_steps, n_features, train_X, train_y, test_X, test_y = prepare_multivariate()
 # model = model_multivariate(
 #     n_steps, n_features, train_X, train_y, test_X, test_y)
@@ -221,4 +289,17 @@ def model_multivariate(n_steps, n_features, train_X, train_y, test_X, test_y):
 # plt.plot(test_y, label='Y')
 # plt.legend()
 # plt.show()
-load_data()
+
+
+
+# The goal of this document is to show the sales of item 20949 in all the stores 
+# 1. Monthly Sales distribution
+# 2. Weekly Sales distribution of a product 
+# 3. Predict Weekly Sales  
+df = load_data()
+monthly_sales_distribution(df)
+weekly_sales_distribution(df)
+daily_sales_distribution(df)
+
+
+#df1.head()
