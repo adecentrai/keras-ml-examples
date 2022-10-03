@@ -1,6 +1,3 @@
-
-from pandas import concat
-from sklearn.preprocessing import MinMaxScaler
 from math import sqrt
 from numpy import concatenate
 from matplotlib import figure, pyplot as plt
@@ -16,33 +13,63 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import LSTM
 
 
+# from datetime import datetime
+# # load data
+
+
+# def parse(x):
+#     return datetime.strptime(x, '%Y %m %d %H')
+
+
+# dataset = read_csv('../data/bejing_data/pollution.csv',  parse_dates=[
+#                    ['year', 'month', 'day', 'hour']], index_col=0, date_parser=parse)
+
+# dataset.drop('No', axis=1, inplace=True)
+# # manually specify column names
+
+# dataset.columns = ['pollution', 'dew', 'temp',
+#                    'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain']
+
+# dataset.index.name = 'date'
+# # mark all NA values with 0
+
+# dataset['pollution'].fillna(0, inplace=True)
+
+# # drop the first 24 hours
+# dataset = dataset[24:]
+# # summarize first 5 rows
+# print(dataset.head(5))
+# # save to file
+# dataset.to_csv('pollution.csv')
+
+# convert series to supervised learning
+
+
 def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
-    """
-    Frame a time series as a supervised learning dataset.
-    Arguments:
-            data: Sequence of observations as a list or NumPy array.
-            n_in: Number of lag observations as input (X).
-            n_out: Number of observations as output (y).
-            dropnan: Boolean whether or not to drop rows with NaN values.
-    Returns:
-            Pandas DataFrame of series framed for supervised learning.
-    """
     n_vars = 1 if type(data) is list else data.shape[1]
+    print(type(data))
     df = DataFrame(data)
     cols, names = list(), list()
     # input sequence (t-n, ... t-1)
+    print(df)
     for i in range(n_in, 0, -1):
+        print("input")
+        print(i)
         cols.append(df.shift(i))
         names += [('var%d(t-%d)' % (j+1, i)) for j in range(n_vars)]
     # forecast sequence (t, t+1, ... t+n)
     for i in range(0, n_out):
         cols.append(df.shift(-i))
+        print("sequence")
+        print(i)
         if i == 0:
             names += [('var%d(t)' % (j+1)) for j in range(n_vars)]
         else:
             names += [('var%d(t+%d)' % (j+1, i)) for j in range(n_vars)]
     # put it all together
+    print(cols)
     agg = concat(cols, axis=1)
+    print(agg)
     agg.columns = names
     # drop rows with NaN values
     if dropnan:
@@ -50,28 +77,32 @@ def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
     return agg
 
 
-raw = DataFrame()
-raw['ob1'] = [
-    *[x for x in range(1000)], *[x for x in range(1000)], *[x for x in range(1000)]]
-raw['ob2'] = [*[x for x in range(50, 1050)],
-              *[x for x in range(50, 1050)],
-              *[x for x in range(50, 1050)]
-              ]
-plt.plot(raw['ob1'], label='X')
-plt.plot(raw['ob2'], label='val_loss')
-plt.legend()
-plt.show()
-
-values = raw.values
-
-data = series_to_supervised(values, 9)
-print(data.head)
+# load dataset
+dataset = read_csv(
+    './beijing_air_polution_regeression/pollution.csv', header=0, index_col=0)
+print(dataset.head())
+print(dataset.describe)
+values = dataset.values
+# integer encode direction
+encoder = LabelEncoder()
+values[:, 4] = encoder.fit_transform(values[:, 4])
+# ensure all data is float
+values = values.astype('float32')
+# normalize features
 scaler = MinMaxScaler(feature_range=(0, 1))
-scaled = scaler.fit_transform(data)
+scaled = scaler.fit_transform(values)
+# frame as supervised learning
+reframed = series_to_supervised(scaled, 1, 1)
+# drop columns we don't want to predict
+reframed.drop(
+    reframed.columns[[9, 10, 11, 12, 13, 14, 15]], axis=1, inplace=True)
+print(reframed.head())
 
-n_train_hours = 1950
-train = scaled[:n_train_hours, :]
-test = scaled[n_train_hours:, :]
+# split into train and test sets
+values = reframed.values
+n_train_hours = 365 * 24
+train = values[:n_train_hours, :]
+test = values[n_train_hours:, :]
 # split into input and outputs
 train_X, train_y = train[:, :-1], train[:, -1]
 test_X, test_y = test[:, :-1], test[:, -1]
@@ -79,42 +110,33 @@ test_X, test_y = test[:, :-1], test[:, -1]
 train_X = train_X.reshape((train_X.shape[0], 1, train_X.shape[1]))
 test_X = test_X.reshape((test_X.shape[0], 1, test_X.shape[1]))
 print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
-
+# design network
 model = tf.keras.models.Sequential()
 print(train_X.shape[1])
 print(train_X.shape[2])
-model.add(tf.keras.layers.Dense(units=100, activation='relu'))
 model.add(tf.keras.layers.LSTM(
-    100, input_shape=(train_X.shape[1], train_X.shape[2])))
+    50, input_shape=(train_X.shape[1], train_X.shape[2])))
 model.add(Dense(1))
 model.compile(loss='mae', optimizer='adam')
 # fit network
-history = model.fit(train_X, train_y, epochs=100, batch_size=100,
+history = model.fit(train_X, train_y, epochs=50, batch_size=72,
                     validation_data=(test_X, test_y), verbose=2, shuffle=False, use_multiprocessing=True)
 # plot history
-# test_loss, test_acc = model.evaluate(test_X, test_y)
-# print('Test accuracy:', test_acc)
-plt.plot(history.history['loss'], label='loss')
-plt.plot(history.history['val_loss'], label='val_loss')
+plt.plot(history.history['loss'], label='train')
+plt.plot(history.history['val_loss'], label='test')
 plt.legend()
 plt.show()
 
 # make a prediction
 yhat = model.predict(test_X, use_multiprocessing=True)
-
-# print(yhat)
-# print(test_y)
 test_X = test_X.reshape((test_X.shape[0], test_X.shape[2]))
 # invert scaling for forecast
-inv_yhat = concatenate((yhat, test_X), axis=1)
-print(yhat.shape)
-print(inv_yhat.shape)
-print(test_X.shape)
+inv_yhat = concatenate((yhat, test_X[:, 1:]), axis=1)
 inv_yhat = scaler.inverse_transform(inv_yhat)
 inv_yhat = inv_yhat[:, 0]
 # invert scaling for actual
 test_y = test_y.reshape((len(test_y), 1))
-inv_y = concatenate((test_y, test_X), axis=1)
+inv_y = concatenate((test_y, test_X[:, 1:]), axis=1)
 inv_y = scaler.inverse_transform(inv_y)
 inv_y = inv_y[:, 0]
 # calculate RMSE
