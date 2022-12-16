@@ -34,14 +34,7 @@ warnings.filterwarnings('ignore', 'statsmodels.tsa.arima_model.ARMA',
 warnings.filterwarnings('ignore', 'statsmodels.tsa.arima_model.ARIMA',
                         FutureWarning)
 
-db_connection = sql.connect(host='database-1.cibyktpmmxv5.eu-central-1.rds.amazonaws.com', database='zemp_dg', user='admin', password='5c0ssIwGXgfbGq6WfDMw')
-db_cursor = db_connection.cursor()
-db_cursor.execute('SELECT * FROM sma_accounts1')
-table_rows = db_cursor.fetchall()
 
-df = pd.DataFrame(table_rows)
-
-print(df)
 def demo_ensemble():
     air_passengers_df = pd.read_csv(
         "salesPredictionData/air_passengers.csv",
